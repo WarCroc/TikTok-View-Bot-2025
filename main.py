@@ -12,37 +12,43 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.webdriver import WebDriver
 from requests import Session, post
+from guara.transaction import AbstractTransaction, Application
 
-# Base Transaction Class
-class AbstractTransaction:
-    def __init__(self, driver):
-        self._driver = driver
-
-    def do(self, **kwargs):
-        raise NotImplementedError("Subclasses must implement the `do` method.")
 
 # Concrete Transactions
 class SolveCaptcha(AbstractTransaction):
     def do(self, **kwargs):
         session = Session()
         session.headers = {
-            'authority': 'zefoy.com',
-            'origin': 'https://zefoy.com',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+            "authority": "zefoy.com",
+            "origin": "https://zefoy.com",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
         }
 
         while True:
-            source_code = str(session.get('https://zefoy.com').text).replace('&amp;', '&')
+            source_code = str(session.get("https://zefoy.com").text).replace(
+                "&amp;", "&"
+            )
             captcha_token = findall(r'<input type="hidden" name="(.*)">', source_code)
-            
-            if 'token' in captcha_token:
-                captcha_token.remove('token')
-                
+
+            if "token" in captcha_token:
+                captcha_token.remove("token")
+
             captcha_url = findall(r'img src="([^"]*)"', source_code)[0]
-            token_answer = findall(r'type="text" name="(.*)" oninput="this.value', source_code)[0]
-            encoded_image = b64encode(BytesIO(session.get('https://zefoy.com' + captcha_url).content).read()).decode('utf-8')
-            captcha_answer = post(f"https://platipus9999.pythonanywhere.com/", json={'captcha': encoded_image, 'current_time': datetime.now().strftime("%H:%M:%S")}).json()["result"]
-            
+            token_answer = findall(
+                r'type="text" name="(.*)" oninput="this.value', source_code
+            )[0]
+            encoded_image = b64encode(
+                BytesIO(session.get("https://zefoy.com" + captcha_url).content).read()
+            ).decode("utf-8")
+            captcha_answer = post(
+                f"https://platipus9999.pythonanywhere.com/",
+                json={
+                    "captcha": encoded_image,
+                    "current_time": datetime.now().strftime("%H:%M:%S"),
+                },
+            ).json()["result"]
+
             sleep(1)
 
             data = {
@@ -53,18 +59,20 @@ class SolveCaptcha(AbstractTransaction):
                 token, value = values.split('" value="')
                 data[token] = value
             else:
-                data['token'] = ''
+                data["token"] = ""
 
-            response = session.post('https://zefoy.com', data=data).text
+            response = session.post("https://zefoy.com", data=data).text
             try:
                 findall(r'remove-spaces" name="(.*)" placeholder', response)[0]
-                return {'name': 'PHPSESSID', 'value': session.cookies.get('PHPSESSID')}
+                return {"name": "PHPSESSID", "value": session.cookies.get("PHPSESSID")}
             except:
                 pass
+
 
 class NavigateToZefoy(AbstractTransaction):
     def do(self, **kwargs):
         self._driver.get("https://zefoy.com")
+
 
 class SendBot(AbstractTransaction):
     def do(self, search_button, url_box, vid_info, div, **kwargs):
@@ -82,11 +90,11 @@ class SendBot(AbstractTransaction):
 
         sleep(3)
 
-        send_button = f'/html/body/div[{div}]/div/div/div[1]/div/form/button'
+        send_button = f"/html/body/div[{div}]/div/div/div[1]/div/form/button"
         self._driver.find_element(By.XPATH, send_button).click()
         print(f"Sent {kwargs.get('sent', 0) + 1} times.")
         sleep(4)
-        self.do(search_button, url_box, vid_info, div, sent=kwargs.get('sent', 0) + 1)
+        self.do(search_button, url_box, vid_info, div, sent=kwargs.get("sent", 0) + 1)
 
     def check_submit(self):
         remaining = f'//*[@id="{self._driver.execute_script("return window.tasks[self.option][1]")}"]/span'
@@ -111,22 +119,16 @@ class SendBot(AbstractTransaction):
         while delay != 0:
             sleep(1)
             delay -= 1
-            self.change_title(f"TikTok Zefoy Automator using Zefoy.com / Cooldown: {delay}s / Github: @useragents")
+            self.change_title(
+                f"TikTok Zefoy Automator using Zefoy.com / Cooldown: {delay}s / Github: @useragents"
+            )
 
     def convert(self, min: int, sec: int) -> int:
         return min * 60 + sec + 4 if min != 0 else sec + 4
 
     def change_title(self, arg):
-        os.system(f'title {arg}' if os.name == 'nt' else '')
+        os.system(f"title {arg}" if os.name == "nt" else "")
 
-# Application Class (Orchestrator)
-class Application:
-    def __init__(self, driver):
-        self._driver = driver
-
-    def at(self, transaction_class, *args, **kwargs):
-        transaction = transaction_class(self._driver)
-        return transaction.do(*args, **kwargs)
 
 # Main Script
 if __name__ == "__main__":
@@ -135,7 +137,9 @@ if __name__ == "__main__":
     options.add_experimental_option("detach", True)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-    driver = webdriver.Chrome(options=options, service=Service(ChromeDriverManager().install()))
+    driver = webdriver.Chrome(
+        options=options, service=Service(ChromeDriverManager().install())
+    )
 
     # Initialize Application
     app = Application(driver)
