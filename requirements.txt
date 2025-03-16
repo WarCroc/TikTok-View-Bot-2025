@@ -2,3 +2,5 @@ tls_client
 pillow
 requests
 colorama
+selenium
+webdriver_manager
